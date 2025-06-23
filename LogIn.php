@@ -1,76 +1,110 @@
 <?php
-  include("config.php");
+session_start();
 
-   $error='';
-   if($_SERVER["REQUEST_METHOD"] == "POST") {
-        $db = "challangedb";
-      // username and password sent from form 
-      $username = mysqli_real_escape_string($db,$_POST['username']);
-      $name = mysqli_real_escape_string($db,$_POST['name']); 
-      $surname = mysqli_real_escape_string($db,$_POST['surname']); 
+// Database connection setup
+$host = "localhost";
+$user = "root";       // change if needed
+$password = "";       // change if needed
+$database = "challangedb";
 
+// Connect to database
+$conn = new mysqli($host, $user, $password, $database);
 
-      $sql = "SELECT * FROM admin WHERE username = '$username' and name = '$name' and surname = '$surname";
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
-      $result = mysqli_query($db,$sql);      
-      $row = mysqli_num_rows($result);      
-      $count = mysqli_num_rows($result);
+// Handle form submission
+$login_message = "";
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name = trim($_POST['name']);
+    $surname = trim($_POST['surname']);
+    $username = trim($_POST['username']);
 
-      if($count == 1) {
-	  
-         // session_register("myusername");
-         $_SESSION['login_user'] = $username;
-         header("location: dashboard.php");
-      } else {
-         $error = "Your Login Name or Password is invalid";
-      }
-   }
+    // Prepare query
+    $query = $conn->prepare("SELECT * FROM users WHERE name = ? AND surname = ? AND username = ?");
+    $query->bind_param("sss", $name, $surname, $username);
+    $query->execute();
+    $result = $query->get_result();
 
+    // Check if user exists
+    if ($result->num_rows === 1) {
+        $_SESSION['name'] = $name;
+        $_SESSION['surname'] = $surname;
+        $_SESSION['username'] = $username;
+        header('location:dashboard.php');
+        $login_message = "Welcome, $name!";
+    } else {
+        $login_message = "Login failed: user not found.";
+    }
+
+    $query->close();
+}
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-    <title>Log In</title>
+  <meta charset="UTF-8" />
+  <title>Login Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    form {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      width: 100%;
+    }
+    .message {
+      margin-top: 15px;
+      color:red;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <form class="row g-3 needs-validation" novalidate action="SignUp.php" method="POST">
-        <h1>Log In</h1>
-  <div class="col-md-4">
-    <label for="validationCustom01" class="form-label">First name</label>
-    <input type="text" class="form-control" id="validationCustom01" name="name" required>
-    <div class="valid-feedback">
-      Looks good!
-    </div>
-  </div>
-  <div class="col-md-4">
-    <label for="validationCustom02" class="form-label">Last name</label>
-    <input type="text" class="form-control" id="validationCustom02" name="surname" required>
-    <div class="valid-feedback">
-      Looks good!
-    </div>
-  </div>
-  <div class="col-md-4">
-    <label for="validationCustomUsername" class="form-label">Username</label>
-    <div class="input-group has-validation">
-      <span class="input-group-text" id="inputGroupPrepend">@</span>
-      <input type="text" class="form-control" id="validationCustomUsername" aria-describedby="inputGroupPrepend" name="username" required>
-      <div class="invalid-feedback">
-        Please write your username.
-      </div>
-    </div>
-  </div>
-  <div class="col-12">
-    <button class="btn btn-primary" type="submit" name="check">Log In</button>
-  </div>
-</form>
+  <form method="POST" action="">
+    <h2>Login</h2>
+    <input type="text" name="name" placeholder="First Name" required />
+    <input type="text" name="surname" placeholder="Last Name" required />
+    <input type="text" name="username" placeholder="Username" required />
+    <button type="submit">Login</button>
 
-
-
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+    <?php if ($login_message): ?>
+      <div class="message"><?= $login_message ?></div>
+    <?php endif; ?>
+  </form>
 </body>
 </html>
